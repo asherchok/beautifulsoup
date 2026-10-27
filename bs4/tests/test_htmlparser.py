@@ -2,6 +2,7 @@
 trees."""
 
 import pickle
+import sys
 import pytest
 from bs4.builder._htmlparser import (
     _DuplicateAttributeHandler,
@@ -33,9 +34,13 @@ class TestHTMLParserTreeBuilder(HTMLTreeBuilderSmokeTest):
             b"<![n\x00",
             b"<![UNKNOWN[]]>",
         ]
+        # https://edstem.org/us/courses/107547/discussion/8449342
         for markup in bad_markup:
-            with pytest.raises(ParserRejectedMarkup):
+            if sys.version_info >= (3, 10): 
                 self.soup(markup)
+            else:
+                with pytest.raises(ParserRejectedMarkup):
+                    self.soup(markup)
 
     def test_namespaced_system_doctype(self):
         # html.parser can't handle namespaced doctypes, so skip this one.
