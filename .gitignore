@@ -1,3 +1,7 @@
 .venv/
 __pycache__/
 *.py[cod]
+
+# Large local test file (too big for GitHub)
+apps/m2/big.html
+apps/m2/temp-task*.py

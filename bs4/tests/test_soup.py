@@ -39,6 +39,10 @@ from . import (
 import warnings
 from typing import Type
 
+# Personal milestone tests from 
+import importlib.util
+import os
+import pytest
 
 class TestConstructor(SoupTest):
     def test_short_unicode_input(self):
@@ -600,3 +604,83 @@ class TestEncodingConversion(SoupTest):
         # The internal data structures can be encoded as UTF-8.
         soup_from_unicode = self.soup(self.unicode_data)
         assert soup_from_unicode.encode("utf-8") == self.utf8_data
+
+# ---------------------------------------------------------------------------
+# Milestone 2: load task2.py ... task4.py from apps/m2.
+# This file is bs4/tests/test_soup.py, so the repo root is two levels up.
+_M2_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "apps", "m2")
+)
+
+
+def _load_m2_task(name):
+    """Import apps/m2/<name>.py under a unique module name (m2_<name>)."""
+    path = os.path.join(_M2_DIR, f"{name}.py")
+    spec = importlib.util.spec_from_file_location(f"m2_{name}", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+m2_task2 = _load_m2_task("task2")
+m2_task3 = _load_m2_task("task3")
+m2_task4 = _load_m2_task("task4")
+
+
+class TestMileStoneTwoSoupStrainer:
+
+    # ---- shared: picking a parser from the file extension ----
+
+    def test_pick_parser(self):
+        assert m2_task2.pick_parser("page.html") == "html.parser"
+        assert m2_task2.pick_parser("feed.xml") == "xml"
+        with pytest.raises(NotImplementedError):
+            m2_task2.pick_parser("notes.txt")
+
+    # ---- Task 2: only <a> tags ----
+
+    def test_task2_finds_all_links(self):
+        markup = '<p>Hi <a href="x">one</a> and <b><a href="y">two</a></b></p>'
+        links = m2_task2.get_links(markup)
+        assert [str(a) for a in links] == ['<a href="x">one</a>', '<a href="y">two</a>']
+
+    def test_task2_hrefs_and_text(self):
+        markup = '<div><a href="x">one</a><span>skip</span><a href="y">two</a></div>'
+        links = m2_task2.get_links(markup)
+        assert [a.get("href") for a in links] == ["x", "y"]
+        assert [a.text for a in links] == ["one", "two"]
+
+    def test_task2_no_links(self):
+        assert m2_task2.get_links("<p>no <b>links</b> here</p>") == []
+
+    def test_task2_xml_can_contain_a_tags(self):
+        pytest.importorskip("lxml")
+        markup = '<?xml version="1.0"?><root><a href="x">one</a><item>no</item></root>'
+        links = m2_task2.get_links(markup, "xml")
+        assert [a.get("href") for a in links] == ["x"]
+
+    # ---- Task 3: all tags ----
+
+    def test_task3_lists_every_tag_in_order(self):
+        markup = "<div><p>Hi <b>there</b></p><span>x</span></div>"
+        assert m2_task3.get_tag_names(markup) == ["div", "p", "b", "span"]
+
+    def test_task3_empty_document(self):
+        assert m2_task3.get_tag_names("just text") == []
+
+    # ---- Task 4: tags with an id attribute ----
+
+    def test_task4_finds_tags_with_id(self):
+        markup = '<div id="a"><p>no</p><span id="b">yes</span></div><p id="c">x</p><i>no</i>'
+        tags = m2_task4.get_tags_with_id(markup)
+        assert [t["id"] for t in tags] == ["a", "b", "c"]
+
+    def test_task4_skips_child_without_id(self):
+        # <p>no</p> sits inside a matched <div>, so it gets parsed,
+        # but it must not be reported.
+        markup = '<div id="a"><p>no</p></div>'
+        tags = m2_task4.get_tags_with_id(markup)
+        assert [t.name for t in tags] == ["div"]
+
+    def test_task4_no_ids(self):
+        assert m2_task4.get_tags_with_id("<p>a</p><b>b</b>") == []
