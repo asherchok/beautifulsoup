@@ -48,3 +48,24 @@ All three Milestone 2 programs processed the 1.36 GB file successfully.
 **Memory does not go down much, even in the best case.** With almost nothing kept (task 2), peak memory is still about 2.95 GB, more than twice the file size. BeautifulSoup reads the entire document into memory before parsing starts, and SoupStrainer only shrinks the tree that gets built *from* it. To process files much larger than available memory, the input would have to be read and parsed in pieces (streaming), which this API does not do.
 
 **Note on printing.** In Milestone 1, tasks 3 and 4 printed `str(tag)`, which serializes a tag *together with everything inside it*. In a document nested 1200 levels deep, that adds up to hundreds of GB of output, and those versions never finish on `big.html`. For these measurements, both the M1 and M2 versions of tasks 3 and 4 print `tag.name` (plus `tag['id']` for task 4) instead.
+
+## Part 2: API function locations
+
+Locations of every BeautifulSoup API used in Milestone 1 (tasks 1–8) and Milestone 2 Part 1, in the original, unmodified source.
+
+| API | Used in | Defined at |
+|---|---|---|
+| `BeautifulSoup(...)` | all tasks | `bs4/__init__.py:133` (class), `:209` (`__init__`) |
+| `parse_only=` | M2 tasks 2–4 | `bs4/__init__.py:214` |
+| `SoupStrainer(...)` | M2 tasks 2–4 | `bs4/filter.py:313` (class), `:345` (`__init__`) |
+| `prettify()` | M1 tasks 1, 6–8 | `bs4/element.py:2601` |
+| `find_all()` | M1 tasks 1–8, M2 tasks 2–4 | `bs4/element.py:2715` |
+| `find_parent()` | M1 task 5 | `bs4/element.py:992` |
+| `get()` | M1 tasks 1, 2, 6–8; M2 task 2 | `bs4/element.py:2160` |
+| `.text` | M1 tasks 1, 2, 6–8; M2 task 2 | `bs4/element.py:550` (property for `get_text`, `:524`) |
+| `.name` (read and assign) | M1 tasks 3, 6; M2 tasks 3, 4 | `bs4/element.py:1648` (set in `Tag.__init__`) |
+| `tag['class'] = ...` | M1 task 7 | `bs4/element.py:2223` (`Tag.__setitem__`) |
+| `tag['id']` | M2 task 4 | `bs4/element.py:2203` (`Tag.__getitem__`) |
+| `.string` | M1 task 8 | `bs4/element.py:1837` |
+| `wrap()` | M1 task 8 | `bs4/element.py:577` |
+| `new_tag()` | M1 task 8 | `bs4/__init__.py:682` |
