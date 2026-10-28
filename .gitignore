@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 
-# Large local test file (too big for GitHub)
+# Local files that have no business being committed to GitHub
 apps/m2/big.html
 apps/m2/temp-task*.py
+apps/m2/small-soup.html

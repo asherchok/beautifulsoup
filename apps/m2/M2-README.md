@@ -69,3 +69,43 @@ Locations of every BeautifulSoup API used in Milestone 1 (tasks 1–8) and Miles
 | `.string` | M1 task 8 | `bs4/element.py:1837` |
 | `wrap()` | M1 task 8 | `bs4/element.py:577` |
 | `new_tag()` | M1 task 8 | `bs4/__init__.py:682` |
+
+## Part 3: SoupReplacer
+
+`SoupReplacer` renames tags **during parsing**, so there is no second pass over the finished tree (Milestone 1 task 6 parsed first, then looped over `find_all("b")` to rename each tag).
+
+```python
+from bs4 import BeautifulSoup, SoupReplacer
+
+b_to_blockquote = SoupReplacer("b", "blockquote")
+print(BeautifulSoup(html_doc, "html.parser", replacer=b_to_blockquote).prettify())
+```
+
+### Changes to the source
+
+- `bs4/filter.py`: new `SoupReplacer(og_tag, alt_tag)` class, next to `SoupStrainer`. `get_replacement_name(name)` returns `alt_tag` when `name == og_tag`, otherwise `name` unchanged.
+- `bs4/__init__.py`:
+  - `SoupReplacer` is imported, so `from bs4 import SoupReplacer` works.
+  - `BeautifulSoup.__init__` takes an optional `replacer=None` argument, stored as `self.replacer` (the same pattern as `parse_only`).
+  - `handle_starttag` and `handle_endtag` replace `name` before the tag is created or closed. Both are needed: if only the start tag were renamed, `</b>` would not close the `<blockquote>`, and the text after it would end up inside it.
+
+The `html.parser`, `lxml` and `xml` tree builders all call these two `BeautifulSoup` methods, so the replacer works with all of them, and for self-closing tags too. (`html5lib` builds its tree differently and is not covered.)
+
+### Tests
+
+`bs4/tests/test_replacer.py`:
+
+- `test_replacer_to_handle_alt_tag`: `<b>` is renamed to `<blockquote>`, other tags are untouched.
+- `test_replacer_closes_tag_correctly`: text after `</b>` stays outside the new `<blockquote>`, which checks the end-tag handling.
+
+The full test suite passes (741 passed) with lxml 5.x. Note: lxml 6 makes 3 existing tests in `test_lxml.py` fail, in the original code as well, independent of these changes.
+
+### Application: task6.py
+
+Milestone 1 task 6 (change all `<b>` tags to `<blockquote>`), now using `SoupReplacer` instead of a loop after parsing. For example, take a random `small.html` file:
+
+```bash
+python3 task6.py small.html        # writes small-soup.html
+```
+
+`small.html` covers text after a `<b>`, `<b>` in different places, untouched tags, and nested `<b>` tags. All of them come out as correctly nested `<blockquote>`s.

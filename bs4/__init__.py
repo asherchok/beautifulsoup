@@ -91,6 +91,7 @@ from .formatter import Formatter
 from .filter import (
     ElementFilter,
     SoupStrainer,
+    SoupReplacer,
 )
 from typing import (
     Any,
@@ -212,6 +213,7 @@ class BeautifulSoup(Tag):
         features: Optional[Union[str, Sequence[str]]] = None,
         builder: Optional[Union[TreeBuilder, Type[TreeBuilder]]] = None,
         parse_only: Optional[SoupStrainer] = None,
+        replacer: Optional[SoupReplacer] = None,
         from_encoding: Optional[_Encoding] = None,
         exclude_encodings: Optional[_Encodings] = None,
         element_classes: Optional[Dict[Type[PageElement], Type[PageElement]]] = None,
@@ -435,6 +437,7 @@ class BeautifulSoup(Tag):
         self.known_xml = self.is_xml
         self._namespaces = dict()
         self.parse_only = parse_only
+        self.replacer = replacer
 
         if hasattr(markup, "read"):  # It's a file-type object.
             markup = markup.read()
@@ -1017,6 +1020,8 @@ class BeautifulSoup(Tag):
         """
         # print("Start tag %s: %s" % (name, attrs))
         self.endData()
+        if self.replacer:
+            name = self.replacer.get_replacement_name(name)
 
         if (
             self.parse_only
@@ -1060,6 +1065,8 @@ class BeautifulSoup(Tag):
         """
         # print("End tag: " + name)
         self.endData()
+        if self.replacer:
+            name = self.replacer.get_replacement_name(name)
         self._popToTag(name, nsprefix)
 
     def handle_data(self, data: str) -> None:

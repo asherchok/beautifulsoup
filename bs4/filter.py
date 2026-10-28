@@ -680,3 +680,18 @@ class SoupStrainer(ElementFilter):
         :meta private:
         """
         return element if self.match(element) else None
+
+class SoupReplacer:
+    """Renames tags while the document is being parsed.
+
+    :param og_tag: Name of the tag to replace, e.g. "b".
+    :param alt_tag: Name to use instead, e.g. "blockquote".
+    """
+
+    def __init__(self, og_tag: str, alt_tag: str):
+        self.og_tag = og_tag
+        self.alt_tag = alt_tag
+
+    def get_replacement_name(self, name: str) -> str:
+        """Return alt_tag if `name` is og_tag, otherwise `name` unchanged."""
+        return self.alt_tag if name == self.og_tag else name
