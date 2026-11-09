@@ -686,11 +686,26 @@ class SoupReplacer:
 
     :param og_tag: Name of the tag to replace, e.g. "b".
     :param alt_tag: Name to use instead, e.g. "blockquote".
+
+    OPTIONAL
+
+    :param name_xformer: Return replacements for the tag's name
+    :param attrs_xformer: Return replacements for the tag's attribute
+    :param xformer: Perform mutation on tags without returning anything
+
     """
 
-    def __init__(self, og_tag: str, alt_tag: str):
+    def __init__(self, og_tag=None, alt_tag=None, *, name_xformer=None, attrs_xformer=None, xformer=None):
+        if (og_tag is None) != (alt_tag is None):
+            raise ValueError("og_tag and alt_tag must be given together")
+        if og_tag is None and name_xformer is None and attrs_xformer is None and xformer is None:
+            raise ValueError("SoupReplacer needs og_tag/alt_tag or at least one xformer")
+        
         self.og_tag = og_tag
         self.alt_tag = alt_tag
+        self.name_xformer = name_xformer
+        self.attrs_xformer = attrs_xformer
+        self.xformer = xformer
 
     def get_replacement_name(self, name: str) -> str:
         """Return alt_tag if `name` is og_tag, otherwise `name` unchanged."""

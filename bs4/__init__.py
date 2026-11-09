@@ -1049,6 +1049,18 @@ class BeautifulSoup(Tag):
         )
         if tag is None:
             return tag
+        if self.replacer is not None:
+            # Remember the name the parser saw, so handle_endtag can match
+            # the closing tag to this tag even if an xformer renames it.
+            tag._original_name = tag.name
+            
+            if self.replacer.name_xformer is not None:
+                tag.name = self.replacer.name_xformer(tag)
+            if self.replacer.attrs_xformer is not None:
+                tag.attrs = self.replacer.attrs_xformer(tag)
+            if self.replacer.xformer is not None:
+                self.replacer.xformer(tag)
+
         if self._most_recent_element is not None:
             self._most_recent_element.next_element = tag
         self._most_recent_element = tag
@@ -1067,6 +1079,12 @@ class BeautifulSoup(Tag):
         self.endData()
         if self.replacer:
             name = self.replacer.get_replacement_name(name)
+            # The closing tag still has the original name; find the open
+            # tag it belongs to and use that tag's current name.
+            for open_tag in reversed(self.tagStack):
+                if open_tag._original_name == name:
+                    name = open_tag.name
+                    break
         self._popToTag(name, nsprefix)
 
     def handle_data(self, data: str) -> None:
