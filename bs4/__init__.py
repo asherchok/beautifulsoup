@@ -492,6 +492,9 @@ class BeautifulSoup(Tag):
         self.markup = None
         self.builder.soup = None
 
+    def __iter__(self):
+        return self.descendants
+
     def copy_self(self) -> "BeautifulSoup":
         """Create a new BeautifulSoup object with the same TreeBuilder,
         but not associated with any markup.
@@ -1053,7 +1056,7 @@ class BeautifulSoup(Tag):
             # Remember the name the parser saw, so handle_endtag can match
             # the closing tag to this tag even if an xformer renames it.
             tag._original_name = tag.name
-            
+
             if self.replacer.name_xformer is not None:
                 tag.name = self.replacer.name_xformer(tag)
             if self.replacer.attrs_xformer is not None:

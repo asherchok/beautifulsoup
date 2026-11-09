@@ -41,8 +41,11 @@ from typing import Type
 
 # Personal milestone tests from 
 import importlib.util
-import os
+import os, sys
 import pytest
+from itertools import islice
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 class TestConstructor(SoupTest):
     def test_short_unicode_input(self):
@@ -684,3 +687,84 @@ class TestMileStoneTwoSoupStrainer:
 
     def test_task4_no_ids(self):
         assert m2_task4.get_tags_with_id("<p>a</p><b>b</b>") == []
+
+def _label(node):
+    """Tag -> its name, text node -> its text. Makes expected lists easy to read."""
+    return node.name if isinstance(node, Tag) else str(node)
+
+class TestMileStoneFourIterableSoup:
+
+    def test_iteration_is_lazy(self):
+        html = "<html><body><h1>Title</h1><p>Hi <b>there</b>!</p></body></html>"
+        soup = BeautifulSoup(html, 'html.parser')
+
+        it = iter(soup)
+        # each next() produces exactly one more node, in pre-order,
+        # without having walked the rest of the tree first
+        assert _label(next(it)) == "html"
+        assert _label(next(it)) == "body"
+        assert _label(next(it)) == "h1"
+
+        # a fresh iterator starts over from the beginning
+        assert _label(next(iter(soup))) == "html"
+
+    def test_iteration_stops_after_last_node(self):
+        html = "<html><body><h1>Title</h1><p>Hi <b>there</b>!</p></body></html>"
+        soup = BeautifulSoup(html, 'html.parser')
+        expected = ["html", "body", "h1", "Title", "p", "Hi ", "b", "there", "!"]
+
+        # islice caps how many nodes we take, so a buggy iterator that never
+        # ends makes this test FAIL (too many nodes) instead of hanging forever
+        nodes = [_label(n) for n in islice(soup, 100)]
+        assert nodes == expected
+
+        # once every node has been produced, asking for more must stop cleanly
+        it = iter(soup)
+        for _ in expected:
+            next(it)
+        with pytest.raises(StopIteration):
+            next(it)
+
+    def test_void_tags_are_visited_without_children(self):
+        html = '<p>a<br>b<img src="x.png"/>c<br/></p>'
+        soup = BeautifulSoup(html, 'html.parser')
+
+        # <br>, <img .../> and <br/> are all visited, and the text after each
+        # one is its SIBLING, not swallowed as its child
+        assert [_label(n) for n in soup] == ["p", "a", "br", "b", "img", "c", "br"]
+        for node in soup:
+            if isinstance(node, Tag) and node.name in ("br", "img"):
+                assert node.contents == []
+
+    def test_each_iter_gets_fresh_generator(self):
+        html = "<div><p>A<b>B</b></p><i>C</i></div>"
+        soup = BeautifulSoup(html, 'html.parser')
+        expected = ["div", "p", "A", "b", "B", "i", "C"]
+
+        first = iter(soup)
+        second = iter(soup)
+        # two separate iterators, not one shared object
+        assert first is not second
+
+        # moving one forward does not move the other
+        assert _label(next(first)) == "div"
+        assert _label(next(first)) == "p"
+        assert _label(next(second)) == "div"
+
+        # the soup can be looped over again and again, with the same result
+        assert [_label(n) for n in soup] == expected
+        assert [_label(n) for n in soup] == expected
+
+    def test_deep_nesting_does_not_raise_recursion_error(self):
+        depth = 3000
+        # deeper than Python's recursion limit (usually 1000), so a
+        # recursive traversal would crash here with RecursionError
+        assert depth > sys.getrecursionlimit()
+
+        html = "<div>" * depth + "deepest" + "</div>" * depth
+        soup = BeautifulSoup(html, 'html.parser')
+
+        nodes = [_label(n) for n in soup]
+        assert len(nodes) == depth + 1          # every <div>, plus the text
+        assert nodes[:depth] == ["div"] * depth  # outermost to innermost
+        assert nodes[-1] == "deepest"
